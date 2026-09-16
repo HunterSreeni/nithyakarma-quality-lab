@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+node_modules/
+target/
+test-results/
+playwright-report/
+blob-report/
+results/
+*.log
