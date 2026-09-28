@@ -4,6 +4,7 @@
 <test name="smoke">
     <classes>
     <class name="org.nithyakarma.qa.SmokeTest"/>
+    <class name="org.nithyakarma.qa.tests.AuthTest"/>
     </classes>
 </test>
 </suite>
