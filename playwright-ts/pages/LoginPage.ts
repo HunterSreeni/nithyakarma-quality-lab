@@ -14,6 +14,7 @@ export class LoginPage {
     readonly signupButton: Locator;
     readonly tandcText: Locator;
 
+    
     constructor(page: Page) {
         this.page = page;
         // Periyava image
@@ -57,5 +58,43 @@ export class LoginPage {
         await expect.soft(this.loginButton).toBeVisible();
         await expect.soft(this.signupButton).toBeVisible();
         await expect.soft(this.tandcText).toBeVisible();
+    }
+
+    async fieldValidation(field: Locator): Promise<string> {
+        return field.evaluate((el: HTMLInputElement) => {
+            const v = el.validity;
+            if (v.valueMissing) return 'valueMissing';
+            if (v.typeMismatch) return 'typeMismatch';
+            if (v.tooShort) return 'tooShort';
+            return v.valid ? 'valid' : 'other';
+        });
+    }
+
+    // wait for the captcha to complete and login button to appear
+    async solveCaptcha(): Promise<void> {
+        const signIn = this.page.getByRole('button', {name: 'Sign In'});
+        // up to 10s whichever happens first react
+        await expect(async() => {
+            if (await signIn.isVisible()) return;   //passed on time
+
+            const cf = this.page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
+            const checkbox = cf?.locator('input[type=checkbox]');
+            if (checkbox && await checkbox.isVisible()) {
+                await checkbox.click();
+                return;
+            }
+            throw new Error('Captcha not ready yet');
+        }).toPass({ timeout: 10000 });
+
+        // up to 10s for the click to be passed/accepted
+        await expect(signIn).toBeEnabled({ timeout: 10000 });
+    }
+
+    async fillCredentials(email: string, password: string): Promise<void> {
+        await this.emailInput.fill(email);
+        await this.passwordInput.fill(password);
+    }
+    async submit(): Promise<void> {
+        await this.page.getByRole('button', {name: 'Sign In'}).click();
     }
 }
