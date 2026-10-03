@@ -11,7 +11,8 @@ import java.time.Duration;
 
 public class BaseTest {
     // read the root .env once; ".." because mvn runs from selenium-java/
-    protected static final Dotenv ENV = Dotenv.configure().directory("..").load();
+    // ignoreIfMissing: CI has no .env, the values come in as environment variables
+    protected static final Dotenv ENV = Dotenv.configure().directory("..").ignoreIfMissing().load();
 
     protected WebDriver driver;
     protected WebDriverWait wait;
@@ -21,6 +22,8 @@ public class BaseTest {
     public void setUp() {
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless=new");
+        // desktop layout (same viewport as Playwright's Desktop Chrome)
+        options.addArguments("--window-size=1280,720");
         driver = new ChromeDriver(options);
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));
     }

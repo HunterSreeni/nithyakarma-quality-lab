@@ -1,7 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 
-process.loadEnvFile(path.resolve(__dirname, '../.env'));
+import fs from 'fs';
+
+// local runs read the root .env; CI passes the same values as secrets
+const envFile = path.resolve(__dirname, '../.env');
+if (fs.existsSync(envFile)) process.loadEnvFile(envFile);
 
 /**
  * Read environment variables from file.
@@ -25,11 +29,18 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  // html for humans, json feeds the results dashboard
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+    ['json', { outputFile: '../results/playwright.json' }],
+  ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
     baseURL: process.env.BASE_URL,
+    // the app shows IST dates/kalams; pin it so CI (UTC) matches
+    timezoneId: 'Asia/Kolkata',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -37,14 +48,43 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    // logged-out tests: login page, form validation, captcha + API negatives
     {
       name: 'chromium',
+      testIgnore: ['**/app/**', '**/*.setup.ts'],
       use: { ...devices['Desktop Chrome'],
         launchOptions: {
           args: ['--disable-blink-features=AutomationControlled'],
           ignoreDefaultArgs: ['--enable-automation']
         },
        },
+    },
+    // magic-link login once, saved to playwright/.auth/user.json
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
+    // logged-in app tests reuse the saved session
+    {
+      name: 'app',
+      testMatch: '**/app/**/*.spec.ts',
+      testIgnore: ['**/logout.spec.ts', '**/settings.spec.ts'],
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], storageState: 'playwright/.auth/user.json' },
+    },
+    // settings round-trips (switch + switch back) run after the read-only checks
+    {
+      name: 'settings',
+      testMatch: '**/app/settings.spec.ts',
+      dependencies: ['app'],
+      use: { ...devices['Desktop Chrome'], storageState: 'playwright/.auth/user.json' },
+    },
+    // logout runs last so it can't end the session the other tests are using
+    {
+      name: 'logout',
+      testMatch: '**/app/logout.spec.ts',
+      dependencies: ['settings'],
+      use: { ...devices['Desktop Chrome'] },
     },
 
     // {

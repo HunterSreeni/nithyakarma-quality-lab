@@ -9,12 +9,22 @@ import org.assertj.core.api.SoftAssertions;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import org.openqa.selenium.JavascriptExecutor;
 
 public class LoginPage {
     private final WebDriver driver;
     private final WebDriverWait wait;
 
     private final By logo = By.cssSelector("img[alt='Nithyakarma']");
+    //email and password fields
+    private final By emailInput = By.id("auth-email");
+    private final By passwordInput = By.id("auth-password");
+    // cloudflare captcha elements
+    private final By cloudFlare = By.cssSelector("div.turnstile-widget");
+    // DEV-NOTE - login button shows 'verifying...' until the captcha is resolved
+    private final By loginButton = By.xpath("//button[normalize-space()='Verifying...']");
+    private final By signIn = By.xpath("//button[normalize-space()='Sign In']");
+
 
     public LoginPage(WebDriver driver, WebDriverWait wait) {
         this.driver = driver;
@@ -70,5 +80,42 @@ public class LoginPage {
         
         // report all at once
         softly.assertAll();
+    }
+        
+        // empty field validations
+        public String fieldValidation(String field) {
+            By locator = field.equals("email") ? emailInput : passwordInput;
+            WebElement el = driver.findElement(locator);
+            return (String) ((JavascriptExecutor) driver).executeScript(
+                "const v = arguments[0].validity;" +
+                "if (v.valueMissing) return 'valueMissing';" +
+                "if (v.typeMismatch) return 'typeMismatch';" +
+                "if (v.tooShort) return 'tooShort';" +
+                "return v.valid ? 'valid': 'other';", el);
+        }
+        
+        // email and password filling
+        public void fillField(String field, String value) {
+            By locator = field.equals("email") ? emailInput : passwordInput;
+            driver.findElement(locator).sendKeys(value);
+        }
+
+        public void fillCredentials(String email, String password) {
+            driver.findElement(emailInput).sendKeys(email);
+            driver.findElement(passwordInput).sendKeys(password);
+        }
+
+        //wait for the captcha, click it then check if it still blocks bots
+        public void solveCaptcha() throws InterruptedException {
+            // fixed 6 seconds wait
+            Thread.sleep(6000);
+            // if the captcha miraculously passes
+            if (driver.findElements(signIn).isEmpty()) {
+                //click checkbox if signin is not visible
+                driver.findElement(cloudFlare).click();
+                Thread.sleep(6000);
+            }
+            //negative testing of the captcha failing for bots
+            wait.until(ExpectedConditions.visibilityOfElementLocated(loginButton));
     }
 }

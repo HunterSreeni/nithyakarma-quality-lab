@@ -1,10 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!-- <test> blocks run top to bottom, same order as the Playwright projects -->
 <suite name="nithyakarma-quality-lab">
 <test name="smoke">
     <classes>
     <class name="org.nithyakarma.qa.SmokeTest"/>
     <class name="org.nithyakarma.qa.tests.AuthTest"/>
+    <class name="org.nithyakarma.qa.tests.AuthApiTest"/>
+    </classes>
+</test>
+<!-- logged-in, read-only checks -->
+<test name="app">
+    <classes>
+    <class name="org.nithyakarma.qa.tests.TodayTest"/>
+    <class name="org.nithyakarma.qa.tests.LearningTest"/>
+    <class name="org.nithyakarma.qa.tests.HistoryTest"/>
+    <class name="org.nithyakarma.qa.tests.SabhaTest"/>
+    <class name="org.nithyakarma.qa.tests.CalendarTest"/>
+    <class name="org.nithyakarma.qa.tests.ProfileTest"/>
+    </classes>
+</test>
+<!-- switch + switch back round-trips -->
+<test name="settings">
+    <classes>
+    <class name="org.nithyakarma.qa.tests.SettingsTest"/>
+    </classes>
+</test>
+<!-- last: logging out can revoke the other sessions -->
+<test name="logout">
+    <classes>
+    <class name="org.nithyakarma.qa.tests.LogoutTest"/>
     </classes>
 </test>
 </suite>

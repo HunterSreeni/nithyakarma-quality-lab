@@ -1,0 +1,106 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# both suites share one live test account: never run two workflows at once
+concurrency:
+  group: e2e-test-account
+  cancel-in-progress: false
+
+env:
+  BASE_URL: ${{ secrets.BASE_URL }}
+  E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  # E2E_ALLOW_DATA_WRITES is deliberately not set: opt-in writes stay skipped in CI
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: playwright-ts
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: playwright-ts/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-results
+          path: |
+            playwright-ts/playwright-report
+            results/playwright.json
+          retention-days: 14
+
+  selenium:
+    # after Playwright, not alongside it (same test account)
+    needs: playwright
+    if: always()
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: selenium-java
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: mvn -B test
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: selenium-results
+          path: selenium-java/target/surefire-reports
+          retention-days: 14
+
+  dashboard:
+    needs: [playwright, selenium]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: playwright-results
+          path: .
+      - uses: actions/download-artifact@v8
+        with:
+          name: selenium-results
+          path: selenium-java/target/surefire-reports
+      - name: Build comparison page
+        run: |
+          node dashboard/build.mjs
+          cp -r playwright-ts/playwright-report site/playwright
+          cp -r selenium-java/target/surefire-reports site/selenium
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v5
