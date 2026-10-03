@@ -23,11 +23,18 @@ test.describe('Profile settings round-trips', () => {
         expect(confirmText).toBe(`Remove ${childName} and all their logs?`);
     });
 
+    // the app updates the screen first and saves in the background; reloading
+    // before the save is sent cancels it, so wait for the PATCH to come back
+    function profileSaved(profile: ProfilePage) {
+        return profile.page.waitForResponse(r =>
+            r.url().includes('/rest/v1/profiles') && r.request().method() === 'PATCH' && r.ok());
+    }
+
     // switch to the other chip, confirm it saved, switch back, confirm that saved
     async function chipRoundTrip(profile: ProfilePage, a: string, b: string) {
         const [from, to] = await profile.isChipOn(a) ? [a, b] : [b, a];
         for (const target of [to, from]) {
-            await profile.chip(target).click();
+            await Promise.all([profileSaved(profile), profile.chip(target).click()]);
             await expect(profile.chip(target)).toHaveClass(/\bon\b/);
             await expect.poll(async () => {
                 await profile.freshLoad();
@@ -49,7 +56,7 @@ test.describe('Profile settings round-trips', () => {
         const original = await profile.leaderboardOptIn.isChecked();
 
         for (const target of [!original, original]) {
-            await profile.leaderboardOptIn.setChecked(target);
+            await Promise.all([profileSaved(profile), profile.leaderboardOptIn.setChecked(target)]);
             await expect.poll(async () => {
                 await profile.freshLoad();
                 return profile.leaderboardOptIn.isChecked();

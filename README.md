@@ -103,7 +103,7 @@ dashboard/          test case catalogue + the results page generator
 | Ordering | Projects with `dependencies` | `<test>` blocks in `testng.xml` |
 | Data-driven | Loop over an array | `@DataProvider` |
 | API tests | Built-in `request` fixture | REST Assured |
-| Network | `waitForResponse`, `expect.poll` | Polling the page (no network hooks without CDP) |
+| Waiting for a save | `waitForResponse` on the PATCH | No network hooks without CDP, so it waits for the app's localStorage cache to come back with the new value |
 
 ## Known gaps
 

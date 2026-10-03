@@ -8,6 +8,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import java.util.Map;
 
 public class ProfilePage extends BasePage {
     private final By name = By.cssSelector("main h1");
@@ -83,9 +84,31 @@ public class ProfilePage extends BasePage {
         return visible(chip(text)).getDomAttribute("class").matches(".*\\bon\\b.*");
     }
 
+    // which profile column each settings chip writes, and the value it saves
+    private static final Map<String, Object[]> CHIP_FIELDS = Map.of(
+        "Tamil", new Object[] { "panchangam_tradition", "tamil" },
+        "Malayalam", new Object[] { "panchangam_tradition", "malayalam" },
+        "Bachelor", new Object[] { "is_married", false },
+        "Married", new Object[] { "is_married", true });
+
     public void selectChip(String text) {
-        visible(chip(text)).click();
+        Object[] field = CHIP_FIELDS.get(text);
+        clickAndWaitForSave(() -> visible(chip(text)).click(), (String) field[0], field[1]);
         wait.until(d -> isChipOn(text));
+    }
+
+    // The app updates the screen first, saves in the background, then re-fetches the
+    // profile and rewrites its cache. Reloading before the save is sent cancels it.
+    // Selenium has no network hooks, so: clear the cache, click, and wait for the cache
+    // to come back holding the new value - that's the "save finished" signal.
+    private void clickAndWaitForSave(Runnable click, String field, Object expected) {
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        js.executeScript("localStorage.removeItem(arguments[0]);", CACHE_KEY);
+        click.run();
+        wait.until(d -> Boolean.TRUE.equals(js.executeScript(
+            "const cached = localStorage.getItem(arguments[0]);" +
+            "return cached !== null && JSON.parse(cached).profile[arguments[1]] === arguments[2];",
+            CACHE_KEY, field, expected)));
     }
 
     private By childRow(String childName) {
@@ -119,7 +142,7 @@ public class ProfilePage extends BasePage {
 
     public void setLeaderboardOptIn(boolean checked) {
         WebElement box = wait.until(ExpectedConditions.presenceOfElementLocated(leaderboardOptIn));
-        if (box.isSelected() != checked) box.click();
+        if (box.isSelected() != checked) clickAndWaitForSave(box::click, "leaderboard_opt_in", checked);
         wait.until(d -> isLeaderboardOptedIn() == checked);
     }
 }

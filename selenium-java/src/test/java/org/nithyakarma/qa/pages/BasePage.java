@@ -30,8 +30,14 @@ public abstract class BasePage {
         return value == null ? "" : value.replaceAll("\\s+", " ").trim();
     }
 
+    // waits for non-blank text: React often renders the element first and fills it in later
     protected String textOf(By locator) {
-        return text(visible(locator));
+        visible(locator);
+        return wait.until(d -> {
+            var found = d.findElements(locator);
+            String value = found.isEmpty() ? "" : text(found.get(0));
+            return value.isBlank() ? null : value;
+        });
     }
 
     // wait until the element's text matches a regex (React updates after clicks)
