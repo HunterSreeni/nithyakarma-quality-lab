@@ -8,3 +8,7 @@ playwright-report/
 blob-report/
 results/
 *.log
+# Claude files
+CLAUDE.md
+.claude
+.claude/*
