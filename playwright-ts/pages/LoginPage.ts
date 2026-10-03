@@ -1,5 +1,7 @@
 import {expect, type Page, type Locator } from '@playwright/test';
 
+
+
 export class LoginPage {
     readonly page: Page;
     readonly logo: Locator;
@@ -73,21 +75,19 @@ export class LoginPage {
     // wait for the captcha to complete and login button to appear
     async solveCaptcha(): Promise<void> {
         const signIn = this.page.getByRole('button', {name: 'Sign In'});
-        // up to 10s whichever happens first react
-        await expect(async() => {
-            if (await signIn.isVisible()) return;   //passed on time
-
-            const cf = this.page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
-            const checkbox = cf?.locator('input[type=checkbox]');
-            if (checkbox && await checkbox.isVisible()) {
-                await checkbox.click();
-                return;
-            }
-            throw new Error('Captcha not ready yet');
-        }).toPass({ timeout: 10000 });
-
-        // up to 10s for the click to be passed/accepted
-        await expect(signIn).toBeEnabled({ timeout: 10000 });
+        // fixed 6 seconds timeout for the cloudflare widget to load
+        await this.page.waitForTimeout(6000);
+        // sometimes captcha passes by itself so only click if needed.
+        if (!(await signIn.isVisible())) {
+            // click the checkbox if signin is not visible
+            await this.cloudFlare.click();
+            // give cloudflare 6 seconds more to accept the click
+            await  this.page.waitForTimeout(6000);
+        }
+        // now check if signin button is enabled and click
+        // await expect(signIn).toBeEnabled({ timeout: 10000});
+        // negative testing of the captcha failing for bots
+        await expect(this.loginButton).toBeVisible();
     }
 
     async fillCredentials(email: string, password: string): Promise<void> {
