@@ -86,7 +86,7 @@ const card = (name, t, meta, report) => `
       <div><dt>Skipped</dt><dd>${t.skipped}</dd></div>
       <div><dt>Wall time</dt><dd>${meta ? secs(meta.wallMs) : '-'}</dd></div>
     </dl>
-    <a class="report" href="${report}">Full ${name} report</a>
+    <a class="report" href="${report}" target="_blank" rel="noopener">Full ${name} report</a>
   </section>`;
 
 let lastArea = '';
@@ -100,6 +100,7 @@ const tableRows = rows.map(r => {
 const repo = process.env.GITHUB_REPOSITORY;
 const runUrl = repo && process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_SERVER_URL}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}` : null;
 const sha = (process.env.GITHUB_SHA ?? '').slice(0, 7);
+const target = process.env.BASE_URL ? new URL(process.env.BASE_URL).host : null;
 const when = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
 
 const html = `<!doctype html>
@@ -157,7 +158,8 @@ const html = `<!doctype html>
 <header>
   <h1>Nithyakarma <span>Quality Lab</span></h1>
   <p>The same ${rows.length} test cases, written twice: Playwright (TypeScript) and Selenium (Java + TestNG), against the live app.</p>
-  <div class="meta">Last run ${esc(when)} IST${sha ? ` · commit ${sha}` : ''}${runUrl ? ` · <a href="${runUrl}">CI run</a>` : ''}</div>
+  <div class="meta">Last run ${esc(when)} IST${sha ? ` · commit ${sha}` : ''}${runUrl ? ` · <a href="${runUrl}" target="_blank" rel="noopener">CI run</a>` : ''}</div>
+  ${target ? `<div class="meta">Target: ${esc(target)}${target.endsWith('.netlify.app') ? ' (Netlify origin: the production build without the Cloudflare proxy, used as the CI test URL)' : ''}</div>` : ''}
 </header>
 
 <div class="cards">

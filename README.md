@@ -36,6 +36,11 @@ magic-link token for the test account, swaps it for a session, and puts that ses
 Playwright does this once and reuses it with `storageState`; Selenium injects it before each test. No captcha is involved because
 admin endpoints aren't captcha-protected, and the key never leaves `.env` or the CI secrets.
 
+**CI tests the Netlify origin, not the public domain.** `app.nithyakarma.org` sits behind Cloudflare, which shows a
+"security verification" page to GitHub's datacenter runners. CI sets `BASE_URL` to the Netlify origin
+(`nithykarma.netlify.app`): the same production build without the Cloudflare proxy. It isn't a separate staging
+environment (same database, same test account), so the data rules below still apply. Local runs can use either URL.
+
 ## Test data rules
 
 The tests run against the live app, on a dedicated test account only.
