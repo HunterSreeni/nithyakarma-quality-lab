@@ -27,7 +27,8 @@ public abstract class BasePage {
     // textContent, not getText(): getText() returns the CSS-uppercased screen text
     public static String text(WebElement element) {
         String value = element.getDomProperty("textContent");
-        return value == null ? "" : value.replaceAll("\\s+", " ").trim();
+        //   (&nbsp;) isn't whitespace to Java's trim()/isBlank(); the app uses it as a placeholder
+        return value == null ? "" : value.replace(' ', ' ').replaceAll("\\s+", " ").trim();
     }
 
     // waits for non-blank text: React often renders the element first and fills it in later

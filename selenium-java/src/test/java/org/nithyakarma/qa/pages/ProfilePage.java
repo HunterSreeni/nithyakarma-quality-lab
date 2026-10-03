@@ -7,8 +7,11 @@ import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.bidi.module.Network;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import java.util.Map;
+import org.openqa.selenium.TimeoutException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class ProfilePage extends BasePage {
     private final By name = By.cssSelector("main h1");
@@ -84,31 +87,34 @@ public class ProfilePage extends BasePage {
         return visible(chip(text)).getDomAttribute("class").matches(".*\\bon\\b.*");
     }
 
-    // which profile column each settings chip writes, and the value it saves
-    private static final Map<String, Object[]> CHIP_FIELDS = Map.of(
-        "Tamil", new Object[] { "panchangam_tradition", "tamil" },
-        "Malayalam", new Object[] { "panchangam_tradition", "malayalam" },
-        "Bachelor", new Object[] { "is_married", false },
-        "Married", new Object[] { "is_married", true });
-
     public void selectChip(String text) {
-        Object[] field = CHIP_FIELDS.get(text);
-        clickAndWaitForSave(() -> visible(chip(text)).click(), (String) field[0], field[1]);
+        clickAndWaitForSave(() -> visible(chip(text)).click());
         wait.until(d -> isChipOn(text));
     }
 
-    // The app updates the screen first, saves in the background, then re-fetches the
-    // profile and rewrites its cache. Reloading before the save is sent cancels it.
-    // Selenium has no network hooks, so: clear the cache, click, and wait for the cache
-    // to come back holding the new value - that's the "save finished" signal.
-    private void clickAndWaitForSave(Runnable click, String field, Object expected) {
-        JavascriptExecutor js = (JavascriptExecutor) driver;
-        js.executeScript("localStorage.removeItem(arguments[0]);", CACHE_KEY);
-        click.run();
-        wait.until(d -> Boolean.TRUE.equals(js.executeScript(
-            "const cached = localStorage.getItem(arguments[0]);" +
-            "return cached !== null && JSON.parse(cached).profile[arguments[1]] === arguments[2];",
-            CACHE_KEY, field, expected)));
+    // The app updates the screen first and saves in the background; reloading before the
+    // save is sent cancels it. WebDriver BiDi (Selenium 4) lets us listen to the network,
+    // the same idea as Playwright's waitForResponse: click, then wait for the PATCH reply.
+    // A latch, not WebDriverWait: WebDriverWait polls every 500ms, which hid the event
+    // (~530ms per save vs ~230ms with the latch; Playwright's waitForResponse ~210ms).
+    private void clickAndWaitForSave(Runnable click) {
+        CountDownLatch saved = new CountDownLatch(1);
+        try (Network network = new Network(driver)) {
+            network.onResponseCompleted(response -> {
+                if ("PATCH".equals(response.getRequest().getMethod())
+                        && response.getRequest().getUrl().contains("/rest/v1/profiles")
+                        && response.getResponseData().getStatus() / 100 == 2) {
+                    saved.countDown();
+                }
+            });
+            click.run();
+            if (!saved.await(10, TimeUnit.SECONDS)) {
+                throw new TimeoutException("no successful PATCH /rest/v1/profiles within 10s");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 
     private By childRow(String childName) {
@@ -142,7 +148,7 @@ public class ProfilePage extends BasePage {
 
     public void setLeaderboardOptIn(boolean checked) {
         WebElement box = wait.until(ExpectedConditions.presenceOfElementLocated(leaderboardOptIn));
-        if (box.isSelected() != checked) clickAndWaitForSave(box::click, "leaderboard_opt_in", checked);
+        if (box.isSelected() != checked) clickAndWaitForSave(box::click);
         wait.until(d -> isLeaderboardOptedIn() == checked);
     }
 }

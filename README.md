@@ -103,7 +103,31 @@ dashboard/          test case catalogue + the results page generator
 | Ordering | Projects with `dependencies` | `<test>` blocks in `testng.xml` |
 | Data-driven | Loop over an array | `@DataProvider` |
 | API tests | Built-in `request` fixture | REST Assured |
-| Waiting for a save | `waitForResponse` on the PATCH | No network hooks without CDP, so it waits for the app's localStorage cache to come back with the new value |
+| Waiting for a save | `waitForResponse` on the PATCH, built in | WebDriver BiDi `Network.onResponseCompleted` (opt in with `enableBiDi()`) plus a `CountDownLatch` |
+
+### Network waits, measured
+
+The settings tests have to wait for a background save before reloading. I timed "click until the save's
+PATCH response is seen" over 10 saves per run, 2 to 3 runs each, against the Netlify origin (median per save):
+
+| Approach | Per save |
+|---|---|
+| Playwright `page.waitForResponse` | ~210 ms |
+| Selenium BiDi listener + `CountDownLatch` (what the suite uses) | ~228 ms |
+| Selenium BiDi listener + `WebDriverWait`, 50 ms polling | ~274 ms |
+| Selenium BiDi listener + `WebDriverWait`, default 500 ms polling | ~533 ms |
+| Selenium polling the app's localStorage cache (first version) | ~477 to 540 ms |
+
+What it showed:
+
+- BiDi's network events are nearly as fast as Playwright's (about 20 ms behind). The big gap was the waiting
+  strategy: `WebDriverWait` polls every 500 ms by default, so it noticed a 200 ms save at the next poll.
+  An event-driven wait fixed that.
+- Session start-up is where Playwright clearly wins: about 70 ms to launch versus about 880 ms for a ChromeDriver
+  session, plus about 110 ms more with BiDi enabled. Selenium opens a fresh session per test, so that adds up
+  over a suite.
+- Enabling BiDi changed one other behaviour: the session started dismissing `confirm()` popups on its own,
+  which broke the remove-child test until `unhandledPromptBehaviour` was set to `IGNORE`.
 
 ## Known gaps
 

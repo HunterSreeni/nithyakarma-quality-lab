@@ -1,6 +1,7 @@
 package org.nithyakarma.qa.base;
 
 import io.github.cdimascio.dotenv.Dotenv;
+import org.openqa.selenium.UnexpectedAlertBehaviour;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -24,6 +25,10 @@ public class BaseTest {
         options.addArguments("--headless=new");
         // desktop layout (same viewport as Playwright's Desktop Chrome)
         options.addArguments("--window-size=1280,720");
+        // WebDriver BiDi: lets tests listen to network events (ProfilePage waits for saves)
+        options.enableBiDi();
+        // BiDi sessions dismiss confirm() popups on their own; leave them for the test to handle
+        options.setUnhandledPromptBehaviour(UnexpectedAlertBehaviour.IGNORE);
         driver = new ChromeDriver(options);
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));
     }

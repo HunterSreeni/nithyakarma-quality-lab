@@ -192,6 +192,8 @@ ${tableRows}
     <tr><td>Waiting</td><td>Auto-waiting locators and web-first assertions</td><td>Explicit WebDriverWait conditions in page objects</td></tr>
     <tr><td>Locators</td><td>Role and label based (getByRole, getByLabel)</td><td>CSS and XPath (no accessibility-tree locators)</td></tr>
     <tr><td>Execution</td><td>Parallel workers, projects for ordering</td><td>Sequential, TestNG &lt;test&gt; blocks for ordering</td></tr>
+    <tr><td>Network waits</td><td>page.waitForResponse, built in (~210 ms per save)</td><td>WebDriver BiDi listener + CountDownLatch (~228 ms per save; ~533 ms with default WebDriverWait polling)</td></tr>
+    <tr><td>Session start</td><td>~70 ms browser launch</td><td>~880 ms ChromeDriver session, ~110 ms more with BiDi</td></tr>
     <tr><td>Data-driven</td><td>Loop over a cases array</td><td>TestNG @DataProvider</td></tr>
     <tr><td>API tests</td><td>Built-in request fixture</td><td>REST Assured</td></tr>
     <tr><td>Captcha</td><td colspan="2">Not bypassed in the UI: kept as a negative test. Logged-in tests use the admin magic link instead.</td></tr>
