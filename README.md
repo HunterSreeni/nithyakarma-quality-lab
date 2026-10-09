@@ -9,6 +9,10 @@ so the two tools can be compared on real work rather than toy examples.
 **Live results:** [huntersreeni.github.io/nithyakarma-quality-lab](https://huntersreeni.github.io/nithyakarma-quality-lab/).
 Every push runs both suites in GitHub Actions and publishes a side-by-side page with each test case's result in each framework.
 
+## Development approach
+
+This project uses AI-assisted workflows for research, implementation and failure analysis. I own the test strategy, framework decisions, validation, debugging, CI workflow and reporting, and can explain the trade-offs in the implementation.
+
 ## What's covered
 
 | Area | Test cases |
