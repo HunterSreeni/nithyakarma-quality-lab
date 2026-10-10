@@ -122,9 +122,9 @@ public class TodayTest extends LoggedInBaseTest {
     @Test
     public void pickerListsOptionsAndMarksTrackedOnes() {
         today.openPicker();
+        wait.until(d -> TodayPage.text(today.pickerOption("Sandhyavandhanam")).contains("already tracking"));
         WebElement sandhya = today.pickerOption("Sandhyavandhanam");
         assertThat(sandhya.isEnabled()).isFalse();
-        wait.until(d -> TodayPage.text(today.pickerOption("Sandhyavandhanam")).contains("already tracking"));
         assertThat(today.pickerOptions().size()).isGreaterThan(5);
     }
 
